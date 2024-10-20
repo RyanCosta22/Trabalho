@@ -1,0 +1,118 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mysql = require('mysql');
+const app = express();
+
+// Conexão com o banco de dados
+const db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'seu_banco_de_dados'
+});
+
+// Middleware para interpretar os dados enviados pelo formulário
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Visualizar dados do usuário
+app.get('/visualizar/:id', (req, res) => {
+    const id = req.params.id;
+
+    // Consulta SQL para buscar os dados do usuário
+    const sql = `SELECT * FROM usuarios WHERE id = ?`;
+    db.query(sql, [id], (err, result) => {
+        if (err) throw err;
+
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Visualizar Informações</title>
+                <style>
+                    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+                    .container { width: 80%; margin: 0 auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+                    .data-item { margin-bottom: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2>Visualizar Informações</h2>
+                    <div class="data-item"><strong>Nome:</strong> ${result[0].nome}</div>
+                    <div class="data-item"><strong>Email:</strong> ${result[0].email}</div>
+                    <div class="data-item"><strong>Cargo:</strong> ${result[0].cargo}</div>
+                    <a href="/editar/${id}">Editar</a>
+                </div>
+            </body>
+            </html>
+        `);
+    });
+});
+
+// Rota para exibir o formulário de edição
+app.get('/editar/:id', (req, res) => {
+    const id = req.params.id;
+
+    // Consulta SQL para buscar os dados do usuário específico
+    const sql = `SELECT * FROM usuarios WHERE id = ?`;
+    db.query(sql, [id], (err, result) => {
+        if (err) throw err;
+
+        // Renderizar a página HTML com os dados preenchidos
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Editar Informações</title>
+                <style>
+                    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+                    .container { width: 80%; margin: 0 auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+                    form { display: flex; flex-direction: column; }
+                    label, input, select, button { margin-bottom: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2>Editar Informações</h2>
+                    <form id="editForm" method="POST" action="/atualizar/${id}">
+                        <label for="nome">Nome:</label>
+                        <input type="text" id="nome" name="nome" value="${result[0].nome}">
+                        
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" value="${result[0].email}">
+
+                        <label for="cargo">Cargo:</label>
+                        <select id="cargo" name="cargo">
+                            <option value="adm" ${result[0].cargo === 'adm' ? 'selected' : ''}>Administrador</option>
+                            <option value="user" ${result[0].cargo === 'user' ? 'selected' : ''}>Usuário</option>
+                        </select>
+
+                        <button type="submit">Salvar Alterações</button>
+                    </form>
+                </div>
+            </body>
+            </html>
+        `);
+    });
+});
+
+// Rota para processar o envio do formulário e atualizar os dados
+app.post('/atualizar/:id', (req, res) => {
+    const id = req.params.id;
+    const { nome, email, cargo } = req.body;
+
+    // Atualizar os dados no banco de dados
+    const sql = `UPDATE usuarios SET nome = ?, email = ?, cargo = ? WHERE id = ?`;
+    db.query(sql, [nome, email, cargo, id], (err, result) => {
+        if (err) throw err;
+        res.redirect(`/visualizar/${id}`);
+    });
+});
+
+// Iniciar o servidor
+app.listen(3000, () => {
+    console.log('Servidor rodando na porta 3000');
+});
